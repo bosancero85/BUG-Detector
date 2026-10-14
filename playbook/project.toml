@@ -1,0 +1,28 @@
+[project]
+name = "bug-detector"
+title = "Bug Detector"
+version = "1.0.0"
+beschreibung = "Regelbasierter Code-Scanner mit Zeilenmarkierung, Root-Cause und Lösungsvorschlägen"
+vorlage = "Bug_Detector.html"
+sprache_ui = "de"
+lizenz = "MIT"
+
+[plattformen]
+unterstuetzt = ["Windows 10/11", "macOS 12+", "Kali Linux (Rolling)"]
+python = ">=3.9"
+
+[stack]
+ui = "PyQt6"
+tests = "unittest (pytest-kompatibel)"
+abhaengigkeiten = ["PyQt6>=6.5"]
+
+[struktur]
+core = "Reine Logik ohne GUI: Modelle, Sprachen, Regeln, Analyzer, Verlauf"
+ui = "PyQt6-Oberfläche: Hauptfenster, Editor, Ergebnisse, Verlauf, Theme, Worker"
+utils = "Pfade und Dateizugriff"
+tests = "Tests für core und utils"
+
+[qualitaet]
+max_dateigroesse_mb = 1
+verlauf_eintraege = 12
+verlauf_code_zeichen = 60000

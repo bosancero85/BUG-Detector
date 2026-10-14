@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bug Detector</title>
+<style>
+:root{--bg:#0e1217;--p:#161b22;--p2:#1d242d;--ln:#283140;--tx:#dce3ec;--dm:#8592a3;--ok:#10b981;--cr:#ff2d55;--wa:#f59e0b;--in:#38bdf8;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.mono{font:13px/20px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+button,select{font:inherit;color:inherit}
+.app{display:flex;height:100%}
+aside{width:264px;flex:none;background:var(--p);border-right:1px solid var(--ln);display:flex;flex-direction:column;transition:transform .25s}
+aside h2{margin:0;padding:16px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--dm);display:flex;justify-content:space-between;align-items:center}
+#hist{flex:1;overflow:auto;padding:0 8px 8px;margin:0;list-style:none}
+#hist li{padding:10px;border-radius:10px;cursor:pointer;transition:background .15s,transform .15s}
+#hist li:hover{background:var(--p2);transform:translateX(2px)}
+#hist b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hist small{color:var(--dm)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+main{flex:1;min-width:0;overflow:auto}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:rgba(14,18,23,.92);backdrop-filter:blur(8px);z-index:5}
+header h1{margin:0;font-size:18px;flex:1;white-space:nowrap}
+header h1 span{color:var(--ok)}
+.btn{background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:8px 14px;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:var(--ok);transform:translateY(-1px)}
+.btn:active{transform:scale(.97)}
+.scan{background:var(--ok);border-color:var(--ok);color:#04130d;font-weight:700;display:flex;align-items:center;gap:8px;min-width:130px;justify-content:center}
+.scan:hover{box-shadow:0 0 18px rgba(16,185,129,.45)}
+.scan[disabled]{opacity:.7;cursor:progress}
+.spin{width:14px;height:14px;border:2px solid #04130d55;border-top-color:#04130d;border-radius:50%;animation:r .7s linear infinite;display:none}
+.busy .spin{display:block}
+@keyframes r{to{transform:rotate(360deg)}}
+select{background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:8px}
+#menu{display:none}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;padding:16px}
+.ed{position:relative;display:flex;height:min(64vh,580px);min-height:320px;background:var(--p);border:1px solid var(--ln);border-radius:14px;overflow:hidden}
+.gut{width:52px;flex:none;overflow:hidden;border-right:1px solid var(--ln);color:var(--dm);text-align:right;user-select:none}
+.gut div,.hl div{height:20px}
+.gut>div,.hl>div{padding-top:12px}
+.gut div div{padding-right:10px}
+.gut .cr{color:var(--cr);font-weight:700}.gut .wa{color:var(--wa);font-weight:700}.gut .in{color:var(--in);font-weight:700}
+.hl{position:absolute;left:52px;right:0;top:0;bottom:0;overflow:hidden;pointer-events:none}
+.hl .cr{background:rgba(255,45,85,.16);box-shadow:inset 3px 0 var(--cr)}.hl .wa{background:rgba(245,158,11,.14);box-shadow:inset 3px 0 var(--wa)}.hl .in{background:rgba(56,189,248,.12);box-shadow:inset 3px 0 var(--in)}
+.hl .flash{animation:f 1.2s}
+@keyframes f{50%{filter:brightness(2.2)}}
+textarea{position:relative;flex:1;min-width:0;background:transparent;border:0;outline:0;resize:none;color:var(--tx);padding:12px;white-space:pre;overflow:auto;caret-color:var(--ok)}
+.drop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(16,185,129,.12);border:2px dashed var(--ok);border-radius:14px;color:var(--ok);font-weight:600;z-index:3;pointer-events:none}
+.ed.drag .drop{display:flex}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;color:var(--dm);font-size:12px}
+.prog{height:4px;background:var(--p2);border-radius:4px;overflow:hidden;margin:0 0 12px;opacity:0;transition:opacity .2s}
+.busy .prog{opacity:1}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--in));transition:width .2s}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--p);border:1px solid var(--ln);border-radius:12px;padding:10px;cursor:pointer;transition:all .15s;text-align:left}
+.stat:hover{transform:translateY(-2px)}.stat.on{border-color:currentColor;background:var(--p2)}
+.stat b{display:block;font-size:24px;line-height:1.1}.stat span{font-size:12px;color:var(--dm)}
+.cr{color:var(--cr)}.wa{color:var(--wa)}.in{color:var(--in)}.ok{color:var(--ok)}
+.card{background:var(--p);border:1px solid var(--ln);border-radius:12px;margin-bottom:10px;overflow:hidden;animation:up .35s both}
+@keyframes up{from{opacity:0;transform:translateY(8px)}}
+.card>button{all:unset;box-sizing:border-box;display:flex;gap:10px;align-items:center;width:100%;padding:12px;cursor:pointer;transition:background .15s}
+.card>button:hover{background:var(--p2)}
+.badge{font-size:11px;font-weight:700;border-radius:99px;padding:2px 9px;border:1px solid currentColor;flex:none}
+.card .t{flex:1;min-width:0}.card .t small{color:var(--dm);display:block}
+.chev{transition:transform .25s;color:var(--dm)}.card.open .chev{transform:rotate(90deg)}
+.body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s}
+.card.open .body{grid-template-rows:1fr}
+.body>div{overflow:hidden}.body .in2{padding:0 12px 12px}
+.body h4{margin:12px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dm)}
+.body p{margin:0}
+pre{margin:6px 0 0;background:#0a0d11;border:1px solid var(--ln);border-radius:10px;padding:10px;overflow:auto;white-space:pre}
+.cp{float:right;font-size:12px;padding:3px 10px}
+.empty{border:1px dashed var(--ln);border-radius:14px;padding:32px 16px;text-align:center;color:var(--dm)}
+.ok-box{border-color:var(--ok);color:var(--ok)}
+@media(max-width:1100px){.grid{grid-template-columns:minmax(0,1fr)}.ed{height:46vh}}
+@media(max-width:900px){#menu{display:inline-block}aside{position:fixed;inset:0 auto 0 0;z-index:20;transform:translateX(-100%)}aside.open{transform:none;box-shadow:0 0 40px #000}}
+@media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}header h1{flex-basis:100%}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside id="side">
+  <h2>Verlauf <button class="btn" id="clr" style="padding:2px 8px;font-size:11px">Leeren</button></h2>
+  <ul id="hist"></ul>
+</aside>
+<main>
+  <header>
+    <button class="btn" id="menu" aria-label="Verlauf">☰</button>
+    <h1>🐞 Bug <span>Detector</span></h1>
+    <select id="lang" aria-label="Sprache"></select>
+    <button class="btn" id="open">Datei öffnen</button>
+    <button class="btn" id="demo">Beispiel</button>
+    <button class="btn scan" id="scan"><i class="spin"></i><span id="sl">Scan Code</span></button>
+    <input type="file" id="file" hidden>
+  </header>
+  <div class="grid" id="grid">
+    <section>
+      <div class="ed" id="ed">
+        <div class="gut mono" id="gut"><div></div></div>
+        <div class="hl mono" id="hl"><div></div></div>
+        <textarea id="code" class="mono" spellcheck="false" placeholder="Code hier einfügen oder Datei hineinziehen …" aria-label="Code"></textarea>
+        <div class="drop">Datei hier ablegen</div>
+      </div>
+      <div class="bar"><span id="info">0 Zeilen</span><span id="stale" class="wa"></span></div>
+    </section>
+    <section id="res"></section>
+  </div>
+</main>
+</div>
+<script>
+/*LOGIC*/
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LANGS=[['auto','Automatisch'],['javascript','JavaScript'],['typescript','TypeScript'],['python','Python'],['java','Java'],['csharp','C#'],['php','PHP'],['go','Go'],['c','C / C++']];
+const EXT={js:'javascript',mjs:'javascript',jsx:'javascript',ts:'typescript',tsx:'typescript',py:'python',java:'java',cs:'csharp',php:'php',go:'go',c:'c',h:'c',cpp:'c',hpp:'c'};
+function detect(code,name){
+  const e=(name||'').split('.').pop().toLowerCase();if(EXT[e])return EXT[e];
+  if(/^\s*def\s+\w+\(.*\)\s*:|^\s*(from\s+\w+\s+)?import\s+\w+\s*$|\bprint\(/m.test(code))return'python';
+  if(/\bpublic\s+(static\s+)?(class|void)|System\.out/.test(code))return'java';
+  if(/<\?php/.test(code))return'php';
+  return'javascript';
+}
+const JS=l=>l==='javascript'||l==='typescript',PY=l=>l==='python',JV=l=>l==='java';
+const SEV={cr:'Kritisch',wa:'Warnung',in:'Info'};
+const RULES=[
+{ok:JS,s:'cr',t:'Unsicheres eval()',re:/\beval\s*\(/,w:'eval() führt Text als Programmcode aus. Kommt der Text von außen, kann ein Angreifer eigenen Code einschleusen.',r:'Daten werden mit Code verwechselt: Es gibt keine Trennung zwischen Eingabe und Programmlogik.',f:()=>'const data = JSON.parse(input); // statt eval(input)'},
+{ok:JS,s:'cr',t:'XSS-Risiko durch innerHTML',re:/\.innerHTML\s*=/,w:'Der zugewiesene Text wird als HTML interpretiert. Enthält er Skript-Tags oder Event-Attribute, läuft fremder Code im Browser.',r:'Ungeprüfte Daten gelangen in einen HTML-Kontext.',f:l=>l.replace(/\.innerHTML\s*=/,'.textContent =')},
+{ok:JS,s:'wa',t:'Möglicher Memory Leak: setInterval ohne clearInterval',re:/\bsetInterval\s*\(/,not:/clearInterval/,w:'Der Timer läuft weiter, auch wenn das Element oder die Seite nicht mehr gebraucht wird. Jede Runde hält Referenzen im Speicher.',r:'Die Timer-ID wird nicht gemerkt und der Timer nie gestoppt.',f:()=>'const id = setInterval(tick, 1000);\n// beim Aufräumen:\nclearInterval(id);'},
+{ok:JS,s:'wa',t:'Möglicher Memory Leak: Event-Listener nie entfernt',re:/\.addEventListener\s*\(/,not:/removeEventListener|AbortController/,w:'Der Listener hält seine Funktion und alles, was sie referenziert, im Speicher, solange das Ziel existiert.',r:'Registrierung ohne Gegenstück zum Entfernen.',f:()=>'const onResize = () => render();\nwindow.addEventListener("resize", onResize);\n// beim Aufräumen:\nwindow.removeEventListener("resize", onResize);'},
+{ok:JS,s:'wa',t:'Lockerer Vergleich mit ==',re:/[^=!<>]==[^=]/,w:'== wandelt Typen still um: 0 == "" und null == undefined sind true. Das erzeugt schwer auffindbare Logikfehler.',r:'Implizite Typumwandlung statt eines strikten Vergleichs.',f:l=>l.replace(/([^=!<>])==([^=])/g,'$1===$2')},
+{ok:JS,s:'wa',t:'Leerer catch-Block',re:/catch\s*(\([^)]*\))?\s*\{\s*\}/,w:'Fehler werden verschluckt. Das Programm läuft scheinbar normal weiter, der Fehler bleibt unsichtbar.',r:'Die Fehlerbehandlung fehlt komplett.',f:()=>'catch (e) {\n  console.error("Laden fehlgeschlagen:", e);\n  // Nutzer informieren oder sauber abbrechen\n}'},
+{ok:JS,s:'in',t:'var statt let/const',re:/\bvar\s+\w/,w:'var gilt für die ganze Funktion und wird hochgezogen (Hoisting). Das führt zu überraschenden Werten.',r:'Veraltete Deklaration ohne Block-Gültigkeitsbereich.',f:l=>l.replace(/\bvar\b/,'const')},
+{ok:JS,s:'in',t:'console.log im Code',re:/\bconsole\.log\s*\(/,w:'Debug-Ausgaben gehören nicht in produktiven Code. Sie verlangsamen und können interne Daten preisgeben.',r:'Testcode wurde nicht entfernt.',f:()=>'// Zeile entfernen oder ein Logging-Modul mit Log-Level verwenden'},
+{ok:PY,s:'cr',t:'Unsicheres eval()/exec()',re:/\b(eval|exec)\s*\(/,w:'Der übergebene Text wird als Python-Code ausgeführt. Bei fremden Eingaben ist das eine Codeausführung aus der Ferne.',r:'Eingabe und Programmlogik sind nicht getrennt.',f:()=>'import ast\nvalue = ast.literal_eval(text)  # nur Literale, kein Code'},
+{ok:PY,s:'wa',t:'Nacktes except',re:/^\s*except\s*:/,w:'Fängt alles, auch KeyboardInterrupt und SystemExit. Echte Fehler gehen unter.',r:'Die erwartete Ausnahme wird nicht benannt.',f:()=>'except (ValueError, KeyError) as exc:\n    logging.exception(exc)'},
+{ok:PY,s:'wa',t:'Veränderlicher Standardwert',re:/def\s+\w+\([^)]*=\s*(\[\]|\{\})/,w:'Der Standardwert wird einmal beim Definieren angelegt und zwischen allen Aufrufen geteilt.',r:'Listen und Dictionaries sind veränderlich.',f:l=>l.replace(/=\s*(\[\]|\{\})/,'=None')+'\n    # im Rumpf: items = [] if items is None else items'},
+{ok:PY,s:'wa',t:'Datei ohne with geöffnet (Resource Leak)',re:/^(?!\s*with\b).*\bopen\s*\(/,not:/\.close\(\)/,w:'Wird die Datei nicht geschlossen, bleibt der Handle offen, besonders bei Fehlern.',r:'Das Schließen hängt vom Programmfluss ab statt von einem Kontext.',f:()=>'with open(path, encoding="utf-8") as fh:\n    data = fh.read()'},
+{ok:PY,s:'in',t:'Vergleich mit None über ==',re:/[=!]=\s*None\b/,w:'None ist ein Singleton. Der Vergleich per is ist korrekt und schneller.',r:'Gleichheit statt Identität.',f:l=>l.replace(/==\s*None/,'is None').replace(/!=\s*None/,'is not None')},
+{ok:JV,s:'wa',t:'String-Vergleich mit ==',re:/"[^"]*"\s*[=!]=|[=!]=\s*"/,w:'== vergleicht Referenzen, nicht den Inhalt. Das Ergebnis hängt vom String-Pool ab.',r:'Verwechslung von Objekt-Identität und Gleichheit.',f:l=>l.replace(/(\w+)\s*==\s*("[^"]*")/,'$2.equals($1)')},
+{ok:JV,s:'wa',t:'Leerer catch-Block',re:/catch\s*\([^)]*\)\s*\{\s*\}/,w:'Die Exception wird verschluckt.',r:'Es gibt keine Fehlerbehandlung.',f:()=>'catch (IOException e) {\n    logger.error("Lesen fehlgeschlagen", e);\n}'},
+{ok:JV,s:'wa',t:'Stream nicht geschlossen (Resource Leak)',re:/^(?!.*\btry\s*\().*new\s+(FileInputStream|FileReader|Scanner|BufferedReader)\s*\(/,not:/\.close\(\)/,w:'Der Datei-Handle bleibt offen, bis der Garbage Collector zufällig aufräumt.',r:'Kein try-with-resources.',f:()=>'try (var in = new FileInputStream(path)) {\n    // lesen\n}'},
+{ok:JV,s:'in',t:'System.out.println im Code',re:/System\.out\.println|printStackTrace\s*\(/,w:'Konsolenausgaben sind kein Logging.',r:'Debugcode blieb stehen.',f:()=>'private static final Logger log = LoggerFactory.getLogger(Main.class);\nlog.info("...");'},
+{ok:()=>true,s:'cr',t:'Fest eincodiertes Geheimnis',re:/(password|passwd|secret|api[_-]?key|token)\s*[:=]\s*["'][^"']{6,}["']/i,w:'Zugangsdaten im Quelltext landen in Versionsverwaltung, Builds und Logs.',r:'Konfiguration und Code sind nicht getrennt.',f:l=>l.replace(/(["'])[^"']{6,}\1/,'process.env.SECRET /* oder os.environ["SECRET"] */')},
+{ok:()=>true,s:'in',t:'Offener TODO/FIXME-Kommentar',re:/\b(TODO|FIXME|HACK)\b/,w:'Ein bekannter offener Punkt steht noch im Code.',r:'Aufgabe nicht erledigt oder nicht im Ticketsystem erfasst.',f:()=>'// Ticket anlegen und hier die Nummer eintragen'}
+];
+function strip(l,lang){return l.replace(/(["'`])(?:\\.|(?!\1).)*\1/g,'""').replace(PY(lang)?/#.*/:/\/\/.*/,'')}
+function analyze(code,lang){
+  const L=code.split('\n'),out=[],noC=l=>PY(lang)?/^\s*#/.test(l):/^\s*(\/\/|\*|\/\*)/.test(l);
+  RULES.forEach(R=>{
+    if(!R.ok(lang)||(R.not&&R.not.test(code)))return;
+    L.forEach((l,i)=>{if(!noC(l)&&R.re.test(l))out.push({s:R.s,t:R.t,line:i+1,w:R.w,r:R.r,f:R.f(l.trim(),l)})});
+  });
+  // Klammern
+  const st=[],pair={')':'(',']':'[','}':'{'};let bad=null;
+  L.forEach((l,i)=>{if(bad||noC(l))return;for(const c of strip(l,lang)){if('([{'.includes(c))st.push([c,i+1]);else if(pair[c]){const t=st.pop();if(!t||t[0]!==pair[c]){bad=t||[c,i+1];return}}}});
+  if(!bad&&st.length)bad=st[st.length-1];
+  if(bad)out.push({s:'cr',t:'Syntaxfehler: Klammer „'+bad[0]+'“ nicht korrekt geschlossen',line:bad[1],w:'Der Parser kann die Datei nicht lesen. Das Programm startet nicht.',r:'Eine öffnende Klammer hat kein passendes Gegenstück.',f:'// Fehlende Klammer ergänzen, z. B.:\nif (cart.length > 0) {\n  return cart;\n}'});
+  if(PY(lang))L.forEach((l,i)=>{if(/^\s*(def|if|elif|else|for|while|class|try|except|finally|with)\b[^#]*[^:\s#(\[{,\\]\s*(#.*)?$/.test(l)&&!/^\s*(else|try|finally)\s*$/.test(l)||/^\s*(else|try|finally)\s*$/.test(l))out.push({s:'cr',t:'Syntaxfehler: Doppelpunkt fehlt',line:i+1,w:'Python verlangt nach Kopfzeilen von Blöcken einen Doppelpunkt.',r:'Die Blockeinleitung ist unvollständig.',f:l.trim()+':'})});
+  // Ungenutzte Variablen / Importe
+  const decl=PY(lang)?/^\s*(?:import|from\s+\S+\s+import)\s+(\w+)/:/\b(?:const|let|var)\s+(\w+)\s*=/;
+  L.forEach((l,i)=>{if(noC(l))return;const m=l.match(decl);if(!m)return;const n=m[1];
+    if((code.match(new RegExp('\\b'+n+'\\b','g'))||[]).length===1)out.push({s:'in',t:(PY(lang)?'Ungenutzter Import „':'Ungenutzte Variable „')+n+'“',line:i+1,w:'„'+n+'“ wird nirgends gelesen. Das ist toter Code und verwirrt Leser.',r:'Rest einer Änderung oder ein Tippfehler im späteren Namen.',f:'// Zeile '+(i+1)+' entfernen (oder die Variable tatsächlich verwenden)'})});
+  const ord={cr:0,wa:1,in:2};
+  return out.sort((a,b)=>ord[a.s]-ord[b.s]||a.line-b.line);
+}
+const SAMPLE=`// Beispiel: Warenkorb-Widget
+var cart = [];
+var unusedTotal = 0;
+
+function load(input) {
+  const data = eval(input);
+  if (data.length == 0) {
+    console.log("leer");
+  }
+  return data;
+}
+
+const API_KEY = "sk-demo-12345678";
+
+function startPolling(el) {
+  setInterval(function () {
+    el.innerHTML = "Update: " + Date.now();
+  }, 1000);
+  window.addEventListener("resize", function () { render(); });
+}
+
+try { load("[]"); } catch (e) {}
+
+function render() {
+  if (cart.length > 0 {
+    return cart;
+  }
+}
+`;
+/*END*/
+const $=id=>document.getElementById(id);
+let found=[],stale=false,filter=null,hist=[],cur=null,busy=false;
+const store={get(){try{return JSON.parse(localStorage.getItem('bd_hist')||'[]')}catch(e){return[]}},set(v){try{localStorage.setItem('bd_hist',JSON.stringify(v))}catch(e){}}};
+$('lang').innerHTML=LANGS.map(([v,n])=>`<option value="${v}">${n}</option>`).join('');
+function marks(){const m={};if(!stale)found.forEach(f=>{if(!m[f.line]||f.s==='cr'||(f.s==='wa'&&m[f.line]==='in'))m[f.line]=f.s});return m}
+function paint(){
+  const n=$('code').value.split('\n').length,m=marks();
+  $('gut').firstChild.innerHTML=Array.from({length:n},(_,i)=>`<div class="${m[i+1]||''}">${i+1}</div>`).join('');
+  $('hl').firstChild.innerHTML=Array.from({length:n},(_,i)=>`<div class="${m[i+1]||''}" data-l="${i+1}"></div>`).join('');
+  $('info').textContent=n+' Zeilen · '+$('code').value.length+' Zeichen';sync();
+}
+function sync(){const y='translateY('+-$('code').scrollTop+'px)';$('gut').firstChild.style.transform=y;$('hl').firstChild.style.transform=y}
+function cards(){
+  const box=$('res');
+  if(!found.length&&!cur){box.innerHTML='<div class="empty">Noch kein Ergebnis.<br>Füge Code ein und klicke auf <b>Scan Code</b>.</div>';return}
+  const c={cr:0,wa:0,in:0};found.forEach(f=>c[f.s]++);
+  const list=found.map((f,i)=>({f,i})).filter(x=>!filter||x.f.s===filter);
+  box.innerHTML=`<div class="prog"><i id="pg"></i></div>
+  <div class="stats">${[['cr','Kritisch'],['wa','Warnung'],['in','Info']].map(([k,n])=>`<button class="stat ${k} ${filter===k?'on':''}" data-k="${k}"><b>${c[k]}</b><span>${n}</span></button>`).join('')}
+  <div class="stat ok" style="cursor:default"><b>${found.length?'⚠':'✔'}</b><span>${found.length?found.length+' Funde':'Sauber'}</span></div></div>`+
+  (found.length?list.map((x,k)=>`<div class="card" style="animation-delay:${k*45}ms" data-i="${x.i}"><button aria-expanded="false"><span class="badge ${x.f.s}">${SEV[x.f.s]}</span><span class="t">${esc(x.f.t)}<small>Zeile ${x.f.line}</small></span><span class="chev">▶</span></button>
+  <div class="body"><div><div class="in2"><h4>Problem</h4><p>${esc(x.f.w)}</p><h4>Root-Cause</h4><p>${esc(x.f.r)}</p><h4>Lösungsvorschlag <button class="btn cp">Kopieren</button></h4><pre class="mono">${esc(x.f.f)}</pre></div></div></div></div>`).join(''):'<div class="empty ok-box">✔ Keine Fehler gefunden. Starker Code!</div>');
+}
+function renderHist(){
+  $('hist').innerHTML=hist.length?hist.map((h,i)=>`<li data-h="${i}"><b>${esc(h.name)}</b><small>${esc(h.lang)} · ${h.time}<br><span class="cr"><i class="dot" style="background:var(--cr)"></i>${h.c.cr}</span> <span class="wa"><i class="dot" style="background:var(--wa)"></i>${h.c.wa}</span> <span class="in"><i class="dot" style="background:var(--in)"></i>${h.c.in}</span></small></li>`).join(''):'<li style="cursor:default;color:var(--dm)">Noch keine Scans.</li>';
+}
+async function scan(){
+  const code=$('code').value;if(busy)return;
+  if(!code.trim()){$('res').innerHTML='<div class="empty wa">Bitte zuerst Code eingeben oder eine Datei hineinziehen.</div>';return}
+  busy=true;filter=null;cur=cur||{name:'Eingabe'};
+  const lang=$('lang').value==='auto'?detect(code,cur.name):$('lang').value;
+  document.body.classList.add('busy');$('scan').disabled=true;
+  $('res').innerHTML='<div class="prog"><i id="pg"></i></div><div class="empty" id="ph"></div>';
+  const ph=['Code wird geparst …','Muster werden geprüft …','Speicherzugriffe werden analysiert …','Bericht wird erstellt …'],total=1500+Math.random()*1000,t0=performance.now();
+  await new Promise(res=>{const iv=setInterval(()=>{const p=Math.min(1,(performance.now()-t0)/total);$('pg').style.width=p*100+'%';$('ph').textContent=ph[Math.min(3,Math.floor(p*4))];$('sl').textContent=Math.round(p*100)+' %';if(p>=1){clearInterval(iv);res()}},60)});
+  found=analyze(code,lang);stale=false;
+  const c={cr:0,wa:0,in:0};found.forEach(f=>c[f.s]++);
+  const nm=cur.name==='Eingabe'?'Eingabe #'+(hist.length+1):cur.name;
+  hist.unshift({name:nm,lang:LANGS.find(l=>l[0]===lang)[1],time:new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),c,code:code.slice(0,60000),fname:cur.name});
+  hist=hist.slice(0,12);store.set(hist);renderHist();
+  busy=false;document.body.classList.remove('busy');$('scan').disabled=false;$('sl').textContent='Scan Code';
+  $('stale').textContent='';cards();paint();
+}
+function load(code,name){$('code').value=code;cur={name:name||'Eingabe'};found=[];stale=false;$('stale').textContent='';cards();paint()}
+function readFile(f){if(!f)return;if(f.size>1e6){$('res').innerHTML='<div class="empty cr">Datei größer als 1 MB.</div>';return}
+  f.text().then(t=>{load(t,f.name);$('lang').value='auto'})}
+$('code').addEventListener('input',()=>{if(found.length&&!stale){stale=true;$('stale').textContent='Code geändert – bitte erneut scannen'}paint()});
+$('code').addEventListener('scroll',sync);
+$('scan').onclick=scan;$('demo').onclick=()=>load(SAMPLE,'beispiel.js');
+$('open').onclick=()=>$('file').click();$('file').onchange=e=>{readFile(e.target.files[0]);e.target.value=''};
+const ed=$('ed');['dragenter','dragover'].forEach(t=>ed.addEventListener(t,e=>{e.preventDefault();ed.classList.add('drag')}));
+['dragleave','drop'].forEach(t=>ed.addEventListener(t,e=>{e.preventDefault();ed.classList.remove('drag')}));
+ed.addEventListener('drop',e=>readFile(e.dataTransfer.files[0]));
+$('menu').onclick=()=>$('side').classList.toggle('open');
+$('clr').onclick=()=>{hist=[];store.set(hist);renderHist()};
+$('hist').onclick=e=>{const li=e.target.closest('li[data-h]');if(!li)return;const h=hist[li.dataset.h];load(h.code,h.fname);$('side').classList.remove('open');scan()};
+$('res').addEventListener('click',e=>{
+  const st=e.target.closest('.stat[data-k]');if(st){filter=filter===st.dataset.k?null:st.dataset.k;cards();return}
+  const cp=e.target.closest('.cp');if(cp){const txt=cp.closest('.in2').querySelector('pre').textContent;
+    const done=()=>{cp.textContent='Kopiert ✓';setTimeout(()=>cp.textContent='Kopieren',1500)};
+    (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(done,()=>{const t=document.createElement('textarea');t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(x){}t.remove()});e.stopPropagation();return}
+  const b=e.target.closest('.card>button');if(b){const card=b.parentElement,open=card.classList.toggle('open');b.setAttribute('aria-expanded',open);
+    if(open&&!stale){const ln=found[card.dataset.i].line,row=$('hl').firstChild.children[ln-1];$('code').scrollTop=Math.max(0,(ln-4)*20);sync();if(row){row.classList.remove('flash');void row.offsetWidth;row.classList.add('flash')}}}
+});
+hist=store.get();renderHist();load(SAMPLE,'beispiel.js');
+</script>
+</body>
+</html>

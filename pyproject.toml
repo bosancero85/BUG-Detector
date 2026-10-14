@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bug-detector"
+version = "1.0.0"
+description = "Regelbasierter Code-Scanner mit grafischer Oberfläche (PyQt6)"
+readme = "README.de.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["PyQt6>=6.5"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+]
+
+[project.scripts]
+bug-detector = "bug_detector.__main__:run"
+
+[tool.setuptools.packages.find]
+include = ["bug_detector*"]
